@@ -4,7 +4,7 @@ LoginUI =\
 """
 <<<<<<<<<<<POS>>>>>>>>>>>>
    Point Of Sale System
-
+ 
 <<<<<<<<<<<POS>>>>>>>>>>>>
 
 """
@@ -24,7 +24,17 @@ Startup =\
 """
 
 Inventory_Admin =\
-t
+"""
+<<<<<<<<<<<<>>>>>>>>>>>
+[1] Inventory List      
+[2] Add New Item
+[3] Delete Item
+[4] Add/Remove Item Stocks
+[5] Activate/Deactivate Items
+[6] Back
+<<<<<<<<<<<<>>>>>>>>>>>
+
+"""
 
 Inventory_Normal =\
 """
@@ -103,8 +113,8 @@ User_Add_Admin =\
 Input_Item_UI =\
 """
 <<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>
-[1] Add Item
-[2] Remove Item
+[1] Add Items
+[2] Remove Items
 [3] Back
 <<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>
 """

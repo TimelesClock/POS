@@ -52,7 +52,7 @@ def encrypt(password):
   """Hash a password for storing."""
   salt = hashlib.sha256(os.urandom(60)).hexdigest().encode('ascii')
   pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'),
-                                salt, 100000)
+  salt, 100000)
   pwdhash = binascii.hexlify(pwdhash)
   return (salt + pwdhash).decode('ascii')
 
@@ -63,9 +63,9 @@ def verify_password(stored_password, provided_password):
   salt = stored_password[:64]
   stored_password = stored_password[64:]
   pwdhash = hashlib.pbkdf2_hmac('sha512',
-                                provided_password.encode('utf-8'),
-                                salt.encode('ascii'),
-                                100000)
+  provided_password.encode('utf-8'),
+  salt.encode('ascii'),
+  100000)
   pwdhash = binascii.hexlify(pwdhash).decode('ascii')
   return pwdhash == stored_password
 
@@ -75,11 +75,10 @@ def Login():
     conn = sqlite3.connect("POS.db")
     cur = conn.cursor()
     global Account_Level
-    global record
     global Account_Name
     global Logged_In
     Logged_In = False
-    while True:
+    while Logged_In == False:
         print(LoginUI)
         print("Username: admin Password: test")
         Account_Name = str(input("Enter Username: "))
@@ -113,6 +112,7 @@ def Login():
                     return
         cls()
         print("Login Unsuccessful!")
+
 
 
 #<<<<<<<<<<< UI CODE >>>>>>>>>>>#
@@ -816,9 +816,16 @@ def Activate_Deactivate():
         
 
 def New_Order_Start():
+    global Account_Name
     conn = sqlite3.connect("POS.db")
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM Temp_Order_History")
+    cur = conn.cursor()    
+    
+    cur.execute("SELECT * FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
+    Exist = cur.fetchone()
+    if Exist is None:
+      cur.execute("INSERT OR IGNORE INTO Temp_Order_History (Account_Name,Customer_Name,Customer_Email,Added_Items,Subtotal) VALUES (?,?,?,?,?)",(Account_Name,"","","",0,))
+      conn.commit()
+    cur.execute("SELECT * FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
     records = cur.fetchall()
     if records[0][1] == "":
       Done1 = "✖"
@@ -865,6 +872,7 @@ def New_Order_Start():
       New_Order_Start()
   
 def Input_Customer_Name():
+    global Account_Name
     conn = sqlite3.connect("POS.db")
     cur = conn.cursor()
     cur.execute("SELECT * FROM Temp_Order_History")
@@ -872,13 +880,14 @@ def Input_Customer_Name():
     print("Inputed Customer Name:",records[0][1])
     Customer_Name = str(input("Input Customer Name, Leave blank to exit: "))
     if not Customer_Name == "":
-      cur.execute("UPDATE Temp_Order_History SET Customer_Name = ? WHERE ID = 0",(Customer_Name,))
+      cur.execute("UPDATE Temp_Order_History SET Customer_Name = ? WHERE Account_Name = ?",(Customer_Name,Account_Name,))
       conn.commit()
 
     cls()
     New_Order_Start()
 
 def Input_Customer_Email():
+    global Account_Name
     conn = sqlite3.connect("POS.db")
     cur = conn.cursor()
     cur.execute("SELECT * FROM Temp_Order_History")
@@ -888,22 +897,24 @@ def Input_Customer_Email():
     
     if check(Customer_Email) == "Invalid":
       Customer_Email = ""
-      cur.execute("UPDATE Temp_Order_History SET Customer_Email = ? WHERE ID = 0",(Customer_Email,))
+      cur.execute("UPDATE Temp_Order_History SET Customer_Email = ? WHERE Account_Name = ?",(Customer_Email,Account_Name,))
+      
       conn.commit()
       cls()
       print("Invalid Email!")
       New_Order_Start()
     elif not Customer_Email == "":
-      cur.execute("UPDATE Temp_Order_History SET Customer_Email = ? WHERE ID = 0",(Customer_Email,))
+      cur.execute("UPDATE Temp_Order_History SET Customer_Email = ? WHERE Account_Name = ?",(Customer_Email,Account_Name,))
       conn.commit()
     
     cls()
     New_Order_Start()
 
 def Input_Items():
+    global Account_Name
     conn = sqlite3.connect("POS.db")
     cur = conn.cursor()
-    cur.execute("SELECT Added_Items FROM Temp_Order_History")
+    cur.execute("SELECT Added_Items FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
     print(from_db_cursor(cur))
     print(Input_Item_UI)
     Option = str(input("Input: "))
@@ -931,31 +942,31 @@ def Input_Items():
               print("Item is not Activated!")
               Input_Items()
             elif int(Stocks[0][0]) - int(Quantity) >= 0:
-              cur.execute("SELECT Changes FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item_To_Add,))
+              cur.execute("SELECT Changes FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item_To_Add,Account_Name,))
               
               record = cur.fetchall()
               
               Temp_Change = 0
               
               for row2 in record:
-                Temp_Change -= int(row2[0])
+                Temp_Change -= int(row2[1])
               
               print("\n",Item_To_Add,"has",int(Stocks[0][0]) - int(Quantity) - Temp_Change,"Stocks left")
               
-              cur.execute("INSERT INTO Temp_Stocks_Changes (Item_Name,Changes) VALUES (?,?)",(Item_To_Add,"-"+Quantity))
+              cur.execute("INSERT INTO Temp_Stocks_Changes (Account_Name,Item_Name,Changes) VALUES (?,?,?)",(Account_Name,Item_To_Add,"-"+Quantity))
 
-              cur.execute("SELECT Added_Items FROM Temp_Order_History")
+              cur.execute("SELECT Added_Items FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
               
               record = cur.fetchall()
               
               Items = record[0][0]
               
-              cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes")
+              cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
               
               Unique_Items = cur.fetchall()
               Item_To_DB = ""
               for Item in Unique_Items:
-                cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item[0],))
+                cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item[0],Account_Name,))
                 
                 record3 = cur.fetchall()
                 
@@ -963,15 +974,15 @@ def Input_Items():
                 
                 for row3 in record3:
                 
-                  Quantity1 -= int(row3[1])
+                  Quantity1 -= int(row3[2])
                 
                 Item_To_DB += Item[0] + " " + str(Quantity1) + "x\n"
               
-              cur.execute("UPDATE Temp_Order_History SET Added_Items = ? WHERE ID = 0",(Item_To_DB,))
+              cur.execute("UPDATE Temp_Order_History SET Added_Items = ? WHERE Account_Name = ?",(Item_To_DB,Account_Name,))
 
               Price = int(row[1])*int(Quantity)
               
-              cur.execute("UPDATE Temp_Order_History SET Subtotal = Subtotal + ? WHERE ID = 0",(Price,))
+              cur.execute("UPDATE Temp_Order_History SET Subtotal = Subtotal + ? WHERE Account_Name = ?",(Price,Account_Name,))
               
               conn.commit()
               Next = str(input("\nInput any character to continue: "))
@@ -982,18 +993,18 @@ def Input_Items():
               while True:
                 Next = str(input("Y/N: "))
                 if Next == "Y":
-                  cur.execute("SELECT Changes FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item_To_Add,))
+                  cur.execute("SELECT Changes FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item_To_Add,Account_Name,))
               
                   record = cur.fetchall()
               
                   Temp_Change = 0
               
                   for row2 in record:
-                    Temp_Change -= int(row2[0])
+                    Temp_Change -= int(row2[1])
               
                   print("\n",Item_To_Add,"has",int(Stocks[0][0]) - int(Quantity) - Temp_Change,"Stocks left")
                   
-                  cur.execute("SELECT Added_Items FROM Temp_Order_History")
+                  cur.execute("SELECT Added_Items FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
 
                   record = cur.fetchall()
                   
@@ -1003,14 +1014,14 @@ def Input_Items():
               
 
               
-                  cur.execute("INSERT INTO Temp_Stocks_Changes (Item_Name,Changes) VALUES (?,?)",(Item_To_Add,"-"+Quantity))
+                  cur.execute("INSERT INTO Temp_Stocks_Changes (Account_Name,Item_Name,Changes) VALUES (?,?,?)",(Account_Name,Item_To_Add,"-"+Quantity))
               
-                  cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes")
+                  cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
               
                   Unique_Items = cur.fetchall()
                   Item_To_DB = ""
                   for Item in Unique_Items:
-                    cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item[0],))
+                    cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item[0],Account_Name,))
                     
                     record3 = cur.fetchall()
                     
@@ -1018,15 +1029,15 @@ def Input_Items():
                     
                     for row3 in record3:
                     
-                      Quantity1 -= int(row3[1])
+                      Quantity1 -= int(row3[2])
                     
                     Item_To_DB += Item[0] + " " + str(Quantity1) + "x\n"
               
-                  cur.execute("UPDATE Temp_Order_History SET Added_Items = ? WHERE ID = 0",(Item_To_DB,))
+                  cur.execute("UPDATE Temp_Order_History SET Added_Items = ? WHERE Account_Name = ?",(Item_To_DB,Account_Name,))
                   
                   Price = int(row[1])*int(Quantity)
               
-                  cur.execute("UPDATE Temp_Order_History SET Subtotal = Subtotal + ? WHERE ID = 0",(Price,))
+                  cur.execute("UPDATE Temp_Order_History SET Subtotal = Subtotal + ? WHERE Account_Name = ?",(Price,Account_Name,))
               
                   conn.commit()
                   
@@ -1055,39 +1066,39 @@ def Input_Items():
       Input_Items()
     elif Option == "2":
       cls()
-      cur.execute("SELECT Added_Items FROM Temp_Order_History")
+      cur.execute("SELECT Added_Items FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
       print(from_db_cursor(cur))
       Item_To_Remove = str(input("Input Name Of Item To Remove: "))
-      cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes")
+      cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
       records = cur.fetchall()
       for row in records:
         if row[0] == Item_To_Remove:
-          cur.execute("SELECT Changes FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item_To_Remove,))
+          cur.execute("SELECT Changes FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item_To_Remove,Account_Name,))
           record2 = cur.fetchall()
           num = 0
           for row2 in record2:
-            num -= int(row2[0])
+            num -= int(row2[1])
           if num != 0:
             Quantity = str(input("Input Number Of Items to Remove: "))
             if Quantity.isnumeric() and int(Quantity) > 0:
-              cur.execute("INSERT INTO Temp_Stocks_Changes (Item_Name,Changes) VALUES (?,?)",(Item_To_Remove,Quantity,))
+              cur.execute("INSERT INTO Temp_Stocks_Changes (Account_Name,Item_Name,Changes) VALUES (?,?,?)",(Account_Name,Item_To_Remove,Quantity,))
               conn.commit()
               Item_To_DB = ""
               for Item in records:
-                cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item[0],))
+                cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item[0],Account_Name,))
                       
                 record3 = cur.fetchall()
                       
                 Quantity1 = 0
                       
                 for row3 in record3:      
-                  Quantity1 -= int(row3[1])
+                  Quantity1 -= int(row3[2])
                 if Quantity1 == 0:
                   Item_To_DB += ""
                 else:
                   Item_To_DB += Item[0] + " " + str(Quantity1) + "x\n"
                 
-              cur.execute("UPDATE Temp_Order_History SET Added_Items = ? WHERE ID = 0",(Item_To_DB,))
+              cur.execute("UPDATE Temp_Order_History SET Added_Items = ? WHERE Account_Name = ?",(Item_To_DB,Account_Name,))
               conn.commit()
               cls()
               Input_Items()
@@ -1111,7 +1122,8 @@ def Input_Items():
       Input_Items()
 
 def Checkout():
-    cur.execute("SELECT * FROM Temp_Order_History")
+    global Account_Name
+    cur.execute("SELECT * FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
     records = cur.fetchall()
     if records[0][3] == "":
       cls()
@@ -1119,7 +1131,7 @@ def Checkout():
       New_Order_Start()
     
     
-    cur.execute("SELECT Subtotal FROM Temp_Order_History")
+    cur.execute("SELECT Subtotal FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
     Subtotal = cur.fetchall()
     Subtotal = Subtotal[0][0]
     Item_To_DB = ""
@@ -1136,55 +1148,42 @@ def Checkout():
     Confirmation = str(input("Type in CONFIRM to Checkout: "))
     if Confirmation == "CONFIRM":
       
-      cur.execute("SELECT * FROM Temp_Order_History")
+      cur.execute("SELECT * FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
       
       records = cur.fetchall()
       
       sgt = pytz.timezone('Asia/Singapore')
       
       time = datetime.datetime.now(tz=sgt)
-      cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes")
+      cur.execute("SELECT DISTINCT Item_Name FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
       Unique_Items = cur.fetchall()
       for Item in Unique_Items:
-        cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ?",(Item[0],))
+        cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Item_Name = ? AND Account_Name = ?",(Item[0],Account_Name,))
         record3 = cur.fetchall()
         Quantity = 0
         for row3 in record3:
-          Quantity -= int(row3[1])
+          Quantity -= int(row3[2])
         Item_To_DB += Item[0] + " " + str(Quantity) + "x\n"
             
       cur.execute("INSERT INTO Order_History (Customer_Name,Customer_Email,Items,Subtotal,Grandtotal,PromoCode,Cashier_Name,Date_Time) VALUES (?,?,?,?,?,?,?,?)",(records[0][1],records[0][2],Item_To_DB,Subtotal,Subtotal,"test",Account_Name,str(time)[:16],))
 
       
-      cur.execute("SELECT * FROM Temp_Stocks_Changes")
+      cur.execute("SELECT * FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
         
       record2 = cur.fetchall()
         
       Change = 0
               
       for row2 in record2:
-        Change -= int(row2[1])
+        Change -= int(row2[2])
         cur.execute("UPDATE Inventory SET Stocks = Stocks - ? WHERE Item_Name = ?",(Change,row2[0],))
         Change = 0
       
-      cur.execute("DROP TABLE Temp_Order_History")
 
-      cur.execute("DROP TABLE Temp_Stocks_Changes")
-
-      cur.execute("CREATE TABLE IF NOT EXISTS Temp_Stocks_Changes (\
-        Item_Name TEXT,\
-	      Changes TEXT\
-      )")
       
-      cur.execute("CREATE TABLE IF NOT EXISTS Temp_Order_History (\
-      ID INTEGER PRIMARYKEY,\
-      Customer_Name TEXT,\
-      Customer_Email TEXT,\
-      Added_Items TEXT,\
-      Subtotal INTEGER\
-      )")
-
-      cur.execute("INSERT OR IGNORE INTO Temp_Order_History (ID,Customer_Name,Customer_Email,Added_Items,Subtotal) VALUES (?,?,?,?,?)",(0,"","","",0,))
+      cur.execute("DELETE FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
+      
+      cur.execute("DELETE FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
 
       conn.commit()
       
@@ -1205,26 +1204,14 @@ def Order_History():
   Start()
 
 def Clear_Inputs():
+  global Account_Name
   confirm = str(input("Type CONFIRM to clear all inputs: "))
   if confirm == "CONFIRM":
-    cur.execute("DROP TABLE Temp_Order_History")
-    cur.execute("DROP TABLE Temp_Stocks_Changes")
+    cur.execute("DELETE FROM Temp_Order_History WHERE Account_Name = ?",(Account_Name,))
+      
+    cur.execute("DELETE FROM Temp_Stocks_Changes WHERE Account_Name = ?",(Account_Name,))
     conn.commit()
     
-    cur.execute("CREATE TABLE IF NOT EXISTS Temp_Stocks_Changes (\
-        Item_Name TEXT,\
-	      Changes TEXT\
-      )")
-    
-    cur.execute("CREATE TABLE IF NOT EXISTS Temp_Order_History (\
-	  ID INTEGER PRIMARYKEY,\
-    Customer_Name TEXT,\
-	  Customer_Email TEXT,\
-    Added_Items TEXT,\
-    Subtotal INTEGER\
-    )")
-
-    cur.execute("INSERT OR IGNORE INTO Temp_Order_History (ID,Customer_Name,Customer_Email,Added_Items,Subtotal) VALUES (?,?,?,?,?)",(0,"","","",0,))
     conn.commit()
     cls()
     print("Inputs Cleared!")

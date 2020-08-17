@@ -40,16 +40,16 @@ cur.execute("CREATE TABLE IF NOT EXISTS Order_History (\
 )")
 
 cur.execute("CREATE TABLE IF NOT EXISTS Temp_Order_History (\
-	ID INTEGER PRIMARYKEY,\
+	Account_Name TEXT,\
   Customer_Name TEXT,\
 	Customer_Email TEXT,\
   Added_Items TEXT,\
   Subtotal INTEGER\
 )")
-cur.execute("SELECT * FROM Temp_Order_History WHERE ID = 0")
-Exist = cur.fetchone()
-if Exist is None:
-  cur.execute("INSERT OR IGNORE INTO Temp_Order_History (ID,Customer_Name,Customer_Email,Added_Items,Subtotal) VALUES (?,?,?,?,?)",(0,"","","",0,))
+#cur.execute("SELECT * FROM Temp_Order_History WHERE ID = 0")
+#Exist = cur.fetchone()
+#if Exist is None:
+  #cur.execute("INSERT OR IGNORE INTO Temp_Order_History (ID,Customer_Name,Customer_Email,Added_Items,Subtotal) VALUES (?,?,?,?,?)",(0,"","","",0,))
 
 cur.execute("CREATE TABLE IF NOT EXISTS Stocks_Changes (\
 	ID INTEGER PRIMARYKEY,\
@@ -60,6 +60,7 @@ cur.execute("CREATE TABLE IF NOT EXISTS Stocks_Changes (\
 )")
 
 cur.execute("CREATE TABLE IF NOT EXISTS Temp_Stocks_Changes (\
+  Account_Name TEXT,\
   Item_Name TEXT,\
 	Changes TEXT\
 )")
